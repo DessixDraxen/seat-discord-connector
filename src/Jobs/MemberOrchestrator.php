@@ -30,29 +30,28 @@ use Warlof\Seat\Connector\Discord\Models\DiscordUser;
  * Class MemberOrchestrator
  * @package Warlof\Seat\Connector\Discord\Jobs
  */
- 
 class MemberOrchestrator extends DiscordJobBase
 {
     /**
      * @var array
      */
     protected $tags = ['orchestrator'];
-	
+
     /**
      * @var GuildMember
      */
     private $member;
-	
+
     /**
      * @var bool
      */
     private $terminator;
-	
+
     /**
      * @var int
      */
     public $tries = 2;
-	
+
     /**
      * ConversationOrchestrator constructor.
      * @param string $member
@@ -61,16 +60,17 @@ class MemberOrchestrator extends DiscordJobBase
     public function __construct(GuildMember $member, bool $terminator = false)
     {
         logger()->debug('Initialising member orchestrator for ' . $member->nick);
-		
+
         $this->terminator = $terminator;
         $this->member = $member;
-		
+
         array_push($this->tags, 'member_id:' . $member->user->id);
+
         // if the terminator flag has been passed, append terminator into tags
         if ($this->terminator)
             array_push($this->tags, 'terminator');
     }
-	
+
     /**
      * @throws DiscordSettingException
      * @throws \Seat\Services\Exceptions\SettingException
@@ -79,40 +79,40 @@ class MemberOrchestrator extends DiscordJobBase
     {
         if (is_null(setting('warlof.discord-connector.credentials.bot_token', true)))
             throw new DiscordSettingException();
-			
+
         if (is_null(setting('warlof.discord-connector.credentials.guild_id', true)))
             throw new DiscordSettingException();
-			
+
         Redis::throttle('seat-discord-connector:jobs.member_orchestrator')->allow(20)->every(10)->then(function() {
-		
+
             // in case terminator flag has not been specified, proceed using user defined mapping
             if (! $this->terminator) {
                 $this->processMappingBase();
                 return;
             }
-			
+
             $this->updateMemberRoles([]);
-			
+
         }, function() {
-		
+
             logger()->warning('A MemberOrchestrator job is already running. Delay job by 10 seconds.');
-			
+
             $this->release(10);
-			
+
         });
     }
-	
+
     /**
      * Set terminator flag to true.
      */
     public function setTerminatorFlag()
     {
         $this->terminator = true;
-		
+
         if (! in_array('terminator', $this->tags))
             array_push($this->tags, 'terminator');
     }
-	
+
     /**
      * Prepare roles mapping and update user if required.
      *
@@ -120,51 +120,51 @@ class MemberOrchestrator extends DiscordJobBase
      */
     private function processMappingBase()
     {
-		$roles = [];
+        $roles = [];
         $nickname = null;
         $hasNickChanged = false;
         $pending_drops = collect();
         $pending_adds = collect();
-		
+
         $discord_user = DiscordUser::where('discord_id', $this->member->user->id)->first();
-		
+
         if (! is_null($discord_user)) {
             if (! is_null($discord_user->group->main_character))
                 $nickname = $discord_user->group->main_character->name;
-				
+
             foreach ($this->member->roles as $role_id) {
                 if (! Helper::isAllowedRole($role_id, $discord_user))
                     $pending_drops->push($role_id);
             }
-			
+
             $roles = Helper::allowedRoles($discord_user);
-			
+
             foreach ($roles as $role_id) {
                 if (! in_array($role_id, $this->member->roles))
                     $pending_adds->push($role_id);
             }
-			
-	    $discordNick = $this->member->nick;
-	    if(is_null($discordNick))
+
+            $discordNick = $this->member->nick;
+            if(is_null($discordNick))
                 $discordNick = $this->member->user->username;
-			
-	    // check to see if the discord user changed their nickname or main character name
+
+            // check to see if the discord user changed their nickname or main character name
             if($discordNick != $nickname && ! is_null($nickname)) {
                 $hasNickChanged = true;
-				
+
                 if($discord_user->nick != $nickname) {
-				
+
                     // save the changed nick name to the database for display purposes
                     $discord_user->nick = $nickname;
                     $discord_user->save();
                 }
             }
-			
+
             if ($pending_adds->count() > 0 || $pending_drops->count() > 0 || $hasNickChanged)
                 $this->updateMemberRoles($roles, $nickname);
         }
     }
-	
+
     /**
      * Update Discord user with new role mapping and nickname if required
      *
@@ -179,14 +179,14 @@ class MemberOrchestrator extends DiscordJobBase
             'user.id'  => $this->member->user->id,
             'roles'    => $roles,
         ];
-		
+
         if ($this->member->nick != $nickname && ! is_null($nickname))
             $options = array_merge($options, [
                 'nick' => $nickname
             ]);
-			
-	logger()->debug('MemberOrchestrator.updateMemberRoles() Updating Discord Roles for User ' . $this->member->user->username . ' - Nicknamed ' . $this->member->nick);
-		
+
+        logger()->debug('MemberOrchestrator.updateMemberRoles() Updating Discord Roles for User ' . $this->member->user->username . ' - Nicknamed ' . $this->member->nick);
+
         app('discord')->guild->modifyGuildMember($options);
     }
 }
