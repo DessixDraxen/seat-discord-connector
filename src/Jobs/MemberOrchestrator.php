@@ -122,6 +122,7 @@ class MemberOrchestrator extends DiscordJobBase
     {
         $roles = [];
         $nickname = null;
+        $newNickname = null;
         $hasNickChanged = false;
         $pending_drops = collect();
         $pending_adds = collect();
@@ -151,7 +152,8 @@ class MemberOrchestrator extends DiscordJobBase
             // check to see if the discord user changed their nickname or main character name
             if($discordNick != $nickname && ! is_null($nickname)) {
                 $hasNickChanged = true;
-
+                $newNickname = $nickname;
+                
                 if($discord_user->nick != $nickname) {
 
                     // save the changed nick name to the database for display purposes
@@ -159,9 +161,13 @@ class MemberOrchestrator extends DiscordJobBase
                     $discord_user->save();
                 }
             }
-
+            else
+            {
+                $newNickname = null;
+            }
+            
             if ($pending_adds->count() > 0 || $pending_drops->count() > 0 || $hasNickChanged)
-                $this->updateMemberRoles($roles, $nickname);
+                $this->updateMemberRoles($roles, $newNickname);
         }
     }
 
@@ -180,7 +186,7 @@ class MemberOrchestrator extends DiscordJobBase
             'roles'    => $roles,
         ];
 
-        if ($this->member->nick != $nickname && ! is_null($nickname))
+        if (! is_null($nickname))
             $options = array_merge($options, [
                 'nick' => $nickname
             ]);
