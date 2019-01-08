@@ -51,7 +51,7 @@ class MemberOrchestrator extends DiscordJobBase
     /**
      * @var int
      */
-    public $tries = 100;
+    public $tries = 2;
 	
     /**
      * ConversationOrchestrator constructor.
@@ -146,7 +146,7 @@ class MemberOrchestrator extends DiscordJobBase
 			
 	    $discordNick = $this->member->nick;
 	    if(is_null($discordNick))
-		   $discordNick = $this->member->user->username;
+                $discordNick = $this->member->user->username;
 			
 	    // check to see if the discord user changed their nickname or main character name
             if($discordNick != $nickname && ! is_null($nickname)) {
@@ -161,7 +161,7 @@ class MemberOrchestrator extends DiscordJobBase
             }
 			
             if ($pending_adds->count() > 0 || $pending_drops->count() > 0 || $hasNickChanged)
-		$this->updateMemberRoles($roles, $nickname);
+                $this->updateMemberRoles($roles, $nickname);
         }
     }
 	
