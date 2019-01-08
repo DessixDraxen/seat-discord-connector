@@ -30,6 +30,7 @@ use Warlof\Seat\Connector\Discord\Models\DiscordUser;
  * Class MemberOrchestrator
  * @package Warlof\Seat\Connector\Discord\Jobs
  */
+ 
 class MemberOrchestrator extends DiscordJobBase
 {
     /**
@@ -65,7 +66,6 @@ class MemberOrchestrator extends DiscordJobBase
         $this->member = $member;
 		
         array_push($this->tags, 'member_id:' . $member->user->id);
-		
         // if the terminator flag has been passed, append terminator into tags
         if ($this->terminator)
             array_push($this->tags, 'terminator');
@@ -120,7 +120,7 @@ class MemberOrchestrator extends DiscordJobBase
      */
     private function processMappingBase()
     {
-        $roles = [];
+		$roles = [];
         $nickname = null;
         $hasNickChanged = false;
         $pending_drops = collect();
@@ -143,19 +143,25 @@ class MemberOrchestrator extends DiscordJobBase
                 if (! in_array($role_id, $this->member->roles))
                     $pending_adds->push($role_id);
             }
-            
-            // check to see if the discord user changed their nickname or main character name
-            if($this->member->nick != $nickname && ! is_null($nickname)) {
+			
+	    $discordNick = $this->member->nick;
+	    if(is_null($discordNick))
+		   $discordNick = $this->member->user->username;
+			
+	    // check to see if the discord user changed their nickname or main character name
+            if($discordNick != $nickname && ! is_null($nickname)) {
                 $hasNickChanged = true;
+				
                 if($discord_user->nick != $nickname) {
+				
                     // save the changed nick name to the database for display purposes
                     $discord_user->nick = $nickname;
                     $discord_user->save();
                 }
             }
 			
-			if ($pending_adds->count() > 0 || $pending_drops->count() > 0 || $hasNickChanged)
-				$this->updateMemberRoles($roles, $nickname);
+            if ($pending_adds->count() > 0 || $pending_drops->count() > 0 || $hasNickChanged)
+		$this->updateMemberRoles($roles, $nickname);
         }
     }
 	
@@ -174,11 +180,13 @@ class MemberOrchestrator extends DiscordJobBase
             'roles'    => $roles,
         ];
 		
-        if (! is_null($nickname))
+        if ($this->member->nick != $nickname && ! is_null($nickname))
             $options = array_merge($options, [
                 'nick' => $nickname
             ]);
 			
+	logger()->debug('MemberOrchestrator.updateMemberRoles() Updating Discord Roles for User ' . $this->member->user->username . ' - Nicknamed ' . $this->member->nick);
+		
         app('discord')->guild->modifyGuildMember($options);
     }
 }
