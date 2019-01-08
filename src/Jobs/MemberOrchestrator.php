@@ -59,7 +59,8 @@ class MemberOrchestrator extends DiscordJobBase
      */
     public function __construct(GuildMember $member, bool $terminator = false)
     {
-        logger()->debug('Initialising member orchestrator for ' . $member->nick);
+        logger()->debug('Initialising member orchestrator for User ' . $member->user->username 
+            . ' - Nicknamed ' . $member->nick);
 
         $this->terminator = $terminator;
         $this->member = $member;
@@ -191,7 +192,8 @@ class MemberOrchestrator extends DiscordJobBase
                 'nick' => $nickname
             ]);
 
-        logger()->debug('MemberOrchestrator.updateMemberRoles() Updating Discord Roles for User ' . $this->member->user->username . ' - Nicknamed ' . $this->member->nick);
+        logger()->debug('MemberOrchestrator.updateMemberRoles() Updating Discord Roles for User ' . $this->member->user->username 
+            . ' - Nicknamed ' . $this->member->nick . ', Role Count: ' . count($roles));
 
         app('discord')->guild->modifyGuildMember($options);
     }
