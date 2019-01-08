@@ -65,6 +65,50 @@ class Helper
     }
 
     /**
+     * Determine all channels that are managed by SEAT configuration
+     *
+     * @param DiscordUser $discord_user
+     * @return array
+     */
+    public static function managedRoles() : array
+    {
+        $managedRoles = [];
+    
+        $rows = Group::join('warlof_discord_connector_role_groups', 'warlof_discord_connector_role_groups.group_id', '=', 'groups.id')
+            ->select('discord_role_id')
+            ->union(
+                // fix model declaration calling the table directly
+                DB::table('group_role')->join('warlof_discord_connector_role_roles', 'warlof_discord_connector_role_roles.role_id', '=',
+                                'group_role.role_id')
+                         ->select('discord_role_id')
+            )->union(
+                CharacterInfo::join('warlof_discord_connector_role_corporations', 'warlof_discord_connector_role_corporations.corporation_id', '=',
+                                    'character_infos.corporation_id')
+                             ->select('discord_role_id')
+            )->union(
+                CharacterInfo::join('character_titles', 'character_infos.character_id', '=', 'character_titles.character_id')
+                             ->join('warlof_discord_connector_role_titles', function ($join) {
+                                 $join->on('warlof_discord_connector_role_titles.corporation_id', '=',
+                                     'character_infos.corporation_id');
+                                 $join->on('warlof_discord_connector_role_titles.title_id', '=',
+                                     'character_titles.title_id');
+                             })
+                             ->select('discord_role_id')
+            )->union(
+                CharacterInfo::join('warlof_discord_connector_role_alliances', 'warlof_discord_connector_role_alliances.alliance_id', '=',
+                                    'character_infos.alliance_id')
+                             ->select('discord_role_id')
+            )->union(
+                DiscordRolePublic::select('discord_role_id')
+            )->distinct()
+            ->get();
+        
+        $managedRoles = $rows->pluck('discord_role_id')->toArray();
+        
+        return $managedRoles;
+    }
+    
+    /**
      * Determine all channels into which an user is allowed to be
      *
      * @param DiscordUser $discord_user
