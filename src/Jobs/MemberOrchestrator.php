@@ -161,7 +161,7 @@ class MemberOrchestrator extends DiscordJobBase
 
             // check to see if the discord user changed their nickname or main character name
             if($discordNick != $nickname && ! is_null($nickname)) {
-            
+
                 $hasNickChanged = true;
                 $newNickname = $nickname;
                 
