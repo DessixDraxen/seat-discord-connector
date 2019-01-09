@@ -134,13 +134,22 @@ class MemberOrchestrator extends DiscordJobBase
             if (! is_null($discord_user->group->main_character))
                 $nickname = $discord_user->group->main_character->name;
 
+            $managedRoles = Helper::managedRoles();
+            $roles = Helper::allowedRoles($discord_user);
+            
+            // check for roles to drop
             foreach ($this->member->roles as $role_id) {
-                if (! Helper::isAllowedRole($role_id, $discord_user))
-                    $pending_drops->push($role_id);
+            
+                if (! in_array($role_id, $roles)) {
+                
+                    if(in_array($role_id, $managedRoles)) 
+                        $pending_drops->push($role_id);
+                    else 
+                        array_push($roles, $role_id); // for non managed seat roles, maintain the role if they have it already
+                }
             }
 
-            $roles = Helper::allowedRoles($discord_user);
-
+            // check for roles to add
             foreach ($roles as $role_id) {
                 if (! in_array($role_id, $this->member->roles))
                     $pending_adds->push($role_id);
@@ -152,6 +161,7 @@ class MemberOrchestrator extends DiscordJobBase
 
             // check to see if the discord user changed their nickname or main character name
             if($discordNick != $nickname && ! is_null($nickname)) {
+
                 $hasNickChanged = true;
                 $newNickname = $nickname;
                 
